@@ -1,34 +1,46 @@
+/* Chrome cuts popups off at 600px tall and adds a scrollbar, so everything
+   here is sized to stay under that, even with the "already saved" notice
+   and the new-folder field showing. */
+
 body { width: 380px; }
 body.window { width: auto; max-width: 480px; margin: 0 auto; }
+/* Backstop: if something rare (a long error) still overflows, scroll without a bar. */
+html { scrollbar-width: none; }
+html::-webkit-scrollbar { display: none; }
 
 .top {
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 10px 8px 14px;
+  padding: 8px 10px 6px 14px;
 }
+.top .icon-btn { width: 32px; height: 32px; }
 .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 999px; }
 .me { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .me .avatar { --s: 26px; }
 .who { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 
 .server-line {
-  margin: 0; padding: 0 14px 12px; text-align: center;
+  margin: 0; padding: 0 14px 10px; text-align: center; line-height: 16px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-form { display: flex; flex-direction: column; gap: 12px; padding: 2px 14px 10px; }
+form { display: flex; flex-direction: column; gap: 10px; padding: 2px 14px 8px; }
+form input:not([type]), form select { height: 36px; }
+form textarea { min-height: 54px; padding-top: 8px; padding-bottom: 8px; }
 
-/* ---------- banner ---------- */
+/* ---------- "already saved" notice, on top of the thumbnail ---------- */
 .banner {
-  display: block; line-height: 1.5;
-  padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r-sm);
-  background: var(--soft); font-size: 13px;
+  position: absolute; z-index: 2; top: 8px; left: 8px; right: 8px;
+  padding: 6px 11px; border-radius: 12px;
+  background: rgba(0,0,0,.76); color: #fff; backdrop-filter: blur(6px);
+  font-size: 12.5px; line-height: 1.45;
 }
 .banner b { font-weight: 600; }
-.banner.warn { border-color: var(--fg); }
+.banner .link { color: #fff; font-size: 12.5px; }
+.banner.warn { box-shadow: inset 0 0 0 1px #fff; }
 
 /* ---------- thumbnail ---------- */
 .thumb {
-  position: relative; aspect-ratio: 16 / 9; overflow: hidden;
+  position: relative; aspect-ratio: 2 / 1; overflow: hidden;
   border: 1px solid var(--line); border-radius: var(--r); background: var(--soft);
   outline: none;
 }
@@ -38,6 +50,7 @@ form { display: flex; flex-direction: column; gap: 12px; padding: 2px 14px 10px;
   position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px;
   align-items: center; justify-content: center; padding: 12px; text-align: center;
 }
+.banner:not([hidden]) ~ .thumb-empty { padding-top: 48px; }
 .thumb-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .chip {
   display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px;
@@ -47,7 +60,7 @@ form { display: flex; flex-direction: column; gap: 12px; padding: 2px 14px 10px;
 .chip:hover { background: var(--hover); }
 
 .thumb-bar {
-  position: absolute; left: 8px; right: 8px; bottom: 8px;
+  position: absolute; z-index: 3; left: 8px; right: 8px; bottom: 8px;
   display: flex; align-items: center; gap: 4px;
   opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s;
 }
@@ -62,15 +75,16 @@ form { display: flex; flex-direction: column; gap: 12px; padding: 2px 14px 10px;
 .thumb-count { padding: 0 10px; font-size: 12px; font-weight: 500; cursor: default; }
 
 .spinner {
-  position: absolute; top: 10px; right: 10px; width: 18px; height: 18px;
+  position: absolute; z-index: 3; bottom: 12px; left: 12px; width: 18px; height: 18px;
   border: 2px solid var(--line); border-top-color: var(--fg); border-radius: 50%;
   animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- fields ---------- */
-.field { display: flex; flex-direction: column; gap: 5px; }
-.label { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.label { display: flex; align-items: baseline; justify-content: space-between; font-size: 12px; line-height: 16px; font-weight: 600; }
+.label .link { font-size: 12px; }
 .with-icon { position: relative; display: block; }
 .with-icon input { padding-left: 40px; }
 .fav-box {
@@ -81,8 +95,20 @@ form { display: flex; flex-direction: column; gap: 12px; padding: 2px 14px 10px;
 .fav-box img { width: 20px; height: 20px; object-fit: contain; }
 .fav-box:has(img:not([hidden])) { background: transparent; }
 
-.actions { display: flex; justify-content: space-between; gap: 8px; padding-top: 2px; }
+/* The new-folder field takes the folder picker's place, on the same line. */
+#folder-row .icon-btn.bordered, #new-folder-row .btn { height: 36px; }
+#folder-row .icon-btn.bordered { width: 36px; }
+#new-folder-row .btn { padding: 0 12px; }
+
+.actions { display: flex; justify-content: space-between; gap: 8px; }
 .actions .primary { min-width: 110px; }
+
+/* Errors float above the buttons instead of pushing the popup taller. */
+.error {
+  position: fixed; z-index: 10; left: 14px; right: 14px; bottom: 82px;
+  padding: 9px 12px; border: 1px solid var(--danger); border-radius: var(--r-sm);
+  background: var(--bg); box-shadow: var(--shadow); line-height: 1.4;
+}
 
 /* ---------- connect / done ---------- */
 .empty-state {

@@ -67,10 +67,9 @@
 
   <!-- The form -->
   <form id="form" hidden autocomplete="off">
-    <div class="banner" id="banner" hidden></div>
-
     <div class="thumb" id="thumb" tabindex="-1">
       <img id="thumb-img" alt="" hidden>
+      <div class="banner" id="banner" hidden></div>
       <div class="thumb-empty" id="thumb-empty">
         <span class="muted small" id="thumb-status">Finding a preview…</span>
         <div class="thumb-actions" id="thumb-empty-actions" hidden>
@@ -107,7 +106,7 @@
 
     <div class="field">
       <label class="label" for="folder">Folder</label>
-      <div class="row">
+      <div class="row" id="folder-row">
         <select id="folder"></select>
         <button type="button" class="icon-btn bordered" id="new-folder" title="New folder" aria-label="New folder">
           <svg width="16" height="16"><use href="#i-plus"/></svg>
@@ -124,7 +123,7 @@
       <span class="label">Description
         <button type="button" class="link" id="desc-fill" hidden>Fill from page</button>
       </span>
-      <textarea id="desc" rows="3" maxlength="2000" placeholder="A note for future you"></textarea>
+      <textarea id="desc" rows="2" maxlength="2000" placeholder="A note for future you"></textarea>
     </label>
 
     <p class="error" id="error" role="alert" hidden></p>

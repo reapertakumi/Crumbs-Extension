@@ -206,6 +206,7 @@ async function createFolder() {
     st.folders.push(f);
     fillFolders(f.id);
     $('new-folder-row').hidden = true;
+    $('folder-row').hidden = false;
     $('new-folder-name').value = '';
     clearError();
   } catch (e) {
@@ -531,19 +532,25 @@ function showDone(b, updated, problems) {
 
 function wireForm() {
   $('form').addEventListener('submit', save);
+  // The error floats over the form: click it, or keep typing, to dismiss it.
+  $('error').addEventListener('click', clearError);
+  $('form').addEventListener('input', clearError);
   $('name').addEventListener('input', () => { st.dirty.name = true; setLetter(); });
   $('url').addEventListener('input', () => setLetter());
   $('desc').addEventListener('input', () => { st.dirty.desc = true; updateDescFill(); });
   $('desc').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) save(e); });
   $('desc-fill').onclick = () => { $('desc').value = pageDescription().slice(0, 2000); st.dirty.desc = true; updateDescFill(); };
 
+  // The new-folder field takes the folder picker's place on the same line,
+  // so the popup doesn't grow.
   const closeNewFolder = () => {
     $('new-folder-row').hidden = true;
+    $('folder-row').hidden = false;
     $('new-folder-name').value = '';
     $('new-folder').focus();
   };
   $('new-folder').onclick = () => {
-    if (!$('new-folder-row').hidden) return closeNewFolder();
+    $('folder-row').hidden = true;
     $('new-folder-row').hidden = false;
     $('new-folder-name').focus();
   };
@@ -628,6 +635,7 @@ function banner(html, warn = false) {
 function showError(msg) {
   const el = $('error');
   el.textContent = msg;
+  el.title = 'Click to close';
   el.hidden = false;
   if ($('form').hidden && $('connect').hidden && $('done').hidden) $('form').hidden = false;
 }

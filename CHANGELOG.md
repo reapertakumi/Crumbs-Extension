@@ -9,6 +9,19 @@ https://github.com/reapertakumi/Crumbs-Extension/releases
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-22
+
+### Fixed
+- The popup no longer shows a scrollbar. It was taller than the 600 px Chrome
+  allows for popups; it now stays under that in every state.
+
+### Changed
+- The "already in Crumbs" notice sits on top of the thumbnail.
+- A new folder's name field takes the folder picker's place on the same line.
+- Errors float above the buttons and close when you click them or keep typing.
+- The thumbnail preview is a little shorter, and the description box is two lines
+  tall (it still grows if you drag its corner).
+
 ## [1.0.2] - 2026-11-22
 
 ### Added
@@ -57,7 +70,8 @@ https://github.com/reapertakumi/Crumbs-Extension/releases
   folder and closing after saving. All are on by default.
 - Black and white look matching Crumbs, with light and dark mode.
 
-[Unreleased]: https://github.com/reapertakumi/Crumbs-Extension/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/reapertakumi/Crumbs-Extension/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/reapertakumi/Crumbs-Extension/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/reapertakumi/Crumbs-Extension/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/reapertakumi/Crumbs-Extension/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/reapertakumi/Crumbs-Extension/releases/tag/v1.0.0
