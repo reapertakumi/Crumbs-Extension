@@ -19,13 +19,19 @@ html::-webkit-scrollbar { display: none; }
 .who { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 
 .server-line {
-  margin: 0; padding: 0 14px 10px; text-align: center; line-height: 16px;
+  margin: 0; padding: 0 14px 8px; text-align: center; line-height: 16px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-form { display: flex; flex-direction: column; gap: 10px; padding: 2px 14px 8px; }
+form { display: flex; flex-direction: column; gap: 8px; padding: 2px 14px 8px; }
 form input:not([type]), form select { height: 36px; }
-form textarea { min-height: 54px; padding-top: 8px; padding-bottom: 8px; }
+/* The description shows five lines. It has no scrollbar; longer text still
+   scrolls with the wheel, touchpad or keys. */
+form textarea {
+  height: calc(5 * 1.4em + 18px); min-height: calc(2 * 1.4em + 18px);
+  padding-top: 8px; padding-bottom: 8px; scrollbar-width: none;
+}
+form textarea::-webkit-scrollbar { display: none; }
 
 /* ---------- "already saved" notice, on top of the thumbnail ---------- */
 .banner {
@@ -40,7 +46,7 @@ form textarea { min-height: 54px; padding-top: 8px; padding-bottom: 8px; }
 
 /* ---------- thumbnail ---------- */
 .thumb {
-  position: relative; aspect-ratio: 2 / 1; overflow: hidden;
+  position: relative; aspect-ratio: 8 / 3; overflow: hidden;
   border: 1px solid var(--line); border-radius: var(--r); background: var(--soft);
   outline: none;
 }
@@ -125,4 +131,31 @@ form textarea { min-height: 54px; padding-top: 8px; padding-bottom: 8px; }
 @keyframes pop { from { transform: scale(.4); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .done-check, .spinner { animation: none; }
+}
+
+/* Folder picker: Chrome's own dropdown list has a scrollbar we can't style.
+   Where Chrome supports a customizable select (135+), draw the list ourselves
+   in the same black-and-white look, with no scrollbar (it still scrolls with
+   the wheel, touchpad and arrow keys). Older Chrome keeps the plain list. */
+@supports (appearance: base-select) {
+  #folder, #folder::picker(select) { appearance: base-select; }
+  #folder { display: flex; align-items: center; }
+  #folder::picker-icon { display: none; }
+  /* Always open downwards, using the room down to the popup's bottom edge. */
+  #folder::picker(select) {
+    position-area: block-end span-inline-end; position-try-fallbacks: none;
+    max-height: calc(100% - 12px); overflow-y: auto; scrollbar-width: none;
+    margin: 0; translate: 0 6px; padding: 4px;
+    border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--bg); color: var(--fg);
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  }
+  #folder::picker(select)::-webkit-scrollbar { display: none; }
+  #folder option {
+    padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #folder option::checkmark { display: none; }
+  #folder option:hover, #folder option:focus-visible { background: var(--line); outline: none; }
+  #folder option:checked { font-weight: 600; }
 }

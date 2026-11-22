@@ -7,21 +7,7 @@ All notable changes to Crumbs for Chrome. The format follows
 Each version is published as a release with an installable zip:
 https://github.com/reapertakumi/Crumbs-Extension/releases
 
-## [Unreleased]
-
-## [1.0.3] - 2026-11-22
-
-### Fixed
 - The popup no longer shows a scrollbar. It was taller than the 600 px Chrome
-  allows for popups; it now stays under that in every state.
-
-### Changed
-- The "already in Crumbs" notice sits on top of the thumbnail.
-- A new folder's name field takes the folder picker's place on the same line.
-- Errors float above the buttons and close when you click them or keep typing.
-- The thumbnail preview is a little shorter, and the description box is two lines
-  tall (it still grows if you drag its corner).
-
 ## [1.0.2] - 2026-11-22
 
 ### Added
