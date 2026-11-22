@@ -31,7 +31,8 @@ Click the cookie icon or press **Alt + Shift + C**. The popup fills in:
 | **Favicon** | The page's own icon, the one in the tab, or Chrome's cached one. Shown next to the name. |
 | **Name** | The page's title, without the "- YouTube" style suffixes. |
 | **URL** | The page address, with tracking junk like `?utm_source=` removed. |
-| **Folder** | Your Crumbs folders and subfolders. Starts with the folder you used last. **+** makes a new one. |
+| **Folder** | Your Crumbs folders and subfolders. Starts with the folder you used last. Click it and type to find a folder, or pick **Create "name"** to make a new one. |
+| **Tags** | The tag icon left of the folder. Type a tag and press Enter or a comma. Suggests the tags you already use. |
 | **Description** | Text you selected on the page, or else the page's description. |
 
 The extension reads the page in your browser first, so it also works on pages
@@ -63,6 +64,7 @@ Saved pages get a ✓ on the toolbar icon until you leave the page.
 | Fill in the description | On |
 | Pick a thumbnail | On |
 | Remember the last folder | On |
+| Suggest tags | On |
 | Close after saving | On |
 
 The title and favicon are always filled in. With the description or thumbnail
@@ -75,6 +77,7 @@ switched off, the popup still offers **Fill from page** and **Find preview**.
 | Your Crumbs address (asked when you connect) | To save bookmarks. Nothing else is ever contacted, except image downloads for thumbnails. |
 | `activeTab`, `scripting` | To read the title, description and images of the page you're saving, only when you click the button. |
 | `favicon` | To use Chrome's own copy of a site's icon. |
+| `tabs` | Reading the address of the page you're on, to show ✓ on the toolbar button when it's already in Crumbs. |
 | `contextMenus` | The right-click entries. |
 | `storage` | Your Crumbs address, sign-in and settings, stored on this computer. |
 
@@ -89,6 +92,16 @@ still blocking other websites.
 Update Crumbs on your Pi to a version with extension support. With an older
 Crumbs the extension falls back to your normal Crumbs sign-in cookie, and
 saving may fail with "Your Crumbs server blocked the extension".
+
+**HTTP or HTTPS.** Crumbs answers on `http://<pi>:9099` and `https://<pi>:9443`;
+the extension works with either. Connecting asks Chrome for both on your Crumbs
+host. With Crumbs' own self-signed certificate, open the `https://` address in a
+tab once and choose *Advanced → Continue*, then connect. If Crumbs is set to send
+`http://` to `https://` (`HTTP_REDIRECT=1`), use the `https://` address.
+
+**Encrypted database.** After a restart Crumbs stays locked until someone enters
+the database key. Until then the popup and the settings say "Crumbs is locked";
+open Crumbs, unlock it, and save again.
 
 ## Releasing a new version
 

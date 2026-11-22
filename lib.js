@@ -13,6 +13,7 @@ export const DEFAULTS = {
   autoDescription: true, // fill the description from the page
   autoThumbnail: true,   // pick a preview image (or a screenshot) automatically
   rememberFolder: true,  // preselect the folder used last time
+  suggestTags: true,     // suggest tags already used in Crumbs
   closeAfterSave: true,  // close the popup a moment after saving
   lastFolder: null,      // id of the folder used last time (null = Uncategorized)
 };
@@ -45,6 +46,25 @@ export function originPattern(server) {
   const u = new URL(server);
   return `${u.protocol}//${u.hostname}/*`;
 }
+
+// Crumbs answers on http:// and https:// side by side, so connecting asks
+// for both on that host: switching between them then needs no new prompt.
+export function originPatterns(server) {
+  const { hostname } = new URL(server);
+  return [`http://${hostname}/*`, `https://${hostname}/*`];
+}
+
+// httpsGuess is where Crumbs' HTTPS most likely lives for an http:// address
+// (9099 -> 9443, the defaults; otherwise the same port).
+export function httpsGuess(server) {
+  const u = new URL(server);
+  if (u.protocol === 'https:') return server;
+  u.protocol = 'https:';
+  if (u.port === '9099' || u.port === '') u.port = '9443';
+  return u.origin + u.pathname.replace(/\/+$/, '');
+}
+
+export const LOCKED_MSG = 'Crumbs is locked. Open Crumbs and enter the database key, then try again.';
 
 export async function hasServerPermission(server) {
   try { return await chrome.permissions.contains({ origins: [originPattern(server)] }); }
@@ -81,13 +101,23 @@ export async function request(server, { method = 'GET', path, body, token = '', 
       credentials: token ? 'omit' : 'include',
       cache: 'no-store',
       signal: AbortSignal.timeout(timeout),
+      // Crumbs set to send http:// to https:// would otherwise fail with a
+      // confusing network error; catch the redirect and say what to do.
+      redirect: 'manual',
     });
   } catch (e) {
-    const msg = e && e.name === 'TimeoutError'
+    let msg = e && e.name === 'TimeoutError'
       ? 'Crumbs did not answer in time. Is the Pi on?'
       : 'Could not reach Crumbs at ' + server + '. Is the address right and the Pi on?';
+    if (server.startsWith('https:') && !(e && e.name === 'TimeoutError')) {
+      msg += ' If Crumbs uses its own certificate, open ' + server + ' in a tab once and choose Advanced, then Continue.';
+    }
     throw new ApiError(0, msg);
   }
+  if (res.type === 'opaqueredirect') {
+    throw new ApiError(0, 'Crumbs now only answers on https://. In the extension settings, change the address to ' + httpsGuess(server) + '.');
+  }
+  if (res.status === 423) throw new ApiError(423, LOCKED_MSG);
   if (raw) {
     if (!res.ok) throw new ApiError(res.status, 'HTTP ' + res.status);
     return res;

@@ -37,6 +37,7 @@
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.2"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
     <symbol id="i-open" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
@@ -105,17 +106,27 @@
     </label>
 
     <div class="field">
-      <label class="label" for="folder">Folder</label>
+      <label class="label folder-label" for="folder">Folder</label>
       <div class="row" id="folder-row">
-        <select id="folder"></select>
-        <button type="button" class="icon-btn bordered" id="new-folder" title="New folder" aria-label="New folder">
-          <svg width="16" height="16"><use href="#i-plus"/></svg>
+        <button type="button" class="icon-btn bordered tag-btn" id="tag-btn" title="Tags" aria-label="Tags"
+                aria-haspopup="dialog" aria-expanded="false" aria-controls="tag-menu">
+          <svg width="16" height="16"><use href="#i-tag"/></svg><span class="tag-count" id="tag-count" hidden></span>
         </button>
+        <span class="folder-pick">
+          <input id="folder" maxlength="100" spellcheck="false" autocomplete="off" placeholder="Find or create a folder"
+                 role="combobox" aria-autocomplete="list" aria-controls="folder-list" aria-expanded="false">
+        </span>
       </div>
-      <div class="row" id="new-folder-row" hidden>
-        <input id="new-folder-name" maxlength="100" placeholder="New folder name">
-        <button type="button" class="btn small-btn primary" id="new-folder-ok">Create</button>
-        <button type="button" class="btn small-btn" id="new-folder-cancel">Cancel</button>
+      <div class="tag-menu" id="tag-menu" role="dialog" aria-label="Tags" hidden>
+        <div class="tagbox" id="tagbox">
+          <span class="tag-chips" id="tag-chips"></span>
+          <input id="tag-input" maxlength="40" placeholder="Add a tag" spellcheck="false"
+                 role="combobox" aria-autocomplete="list" aria-controls="tag-suggest" aria-expanded="false">
+        </div>
+        <div class="tag-suggest" id="tag-suggest" role="listbox"></div>
+      </div>
+      <div class="folder-menu" id="folder-menu" hidden>
+        <div class="folder-list" id="folder-list" role="listbox" aria-label="Folders"></div>
       </div>
     </div>
 

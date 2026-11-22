@@ -46,7 +46,7 @@ form textarea::-webkit-scrollbar { display: none; }
 
 /* ---------- thumbnail ---------- */
 .thumb {
-  position: relative; aspect-ratio: 8 / 3; overflow: hidden;
+  position: relative; aspect-ratio: 16 / 9; overflow: hidden;
   border: 1px solid var(--line); border-radius: var(--r); background: var(--soft);
   outline: none;
 }
@@ -101,10 +101,7 @@ form textarea::-webkit-scrollbar { display: none; }
 .fav-box img { width: 20px; height: 20px; object-fit: contain; }
 .fav-box:has(img:not([hidden])) { background: transparent; }
 
-/* The new-folder field takes the folder picker's place, on the same line. */
-#folder-row .icon-btn.bordered, #new-folder-row .btn { height: 36px; }
-#folder-row .icon-btn.bordered { width: 36px; }
-#new-folder-row .btn { padding: 0 12px; }
+#folder-row .icon-btn.bordered { width: 36px; height: 36px; }
 
 .actions { display: flex; justify-content: space-between; gap: 8px; }
 .actions .primary { min-width: 110px; }
@@ -133,29 +130,73 @@ form textarea::-webkit-scrollbar { display: none; }
   .done-check, .spinner { animation: none; }
 }
 
-/* Folder picker: Chrome's own dropdown list has a scrollbar we can't style.
-   Where Chrome supports a customizable select (135+), draw the list ourselves
-   in the same black-and-white look, with no scrollbar (it still scrolls with
-   the wheel, touchpad and arrow keys). Older Chrome keeps the plain list. */
-@supports (appearance: base-select) {
-  #folder, #folder::picker(select) { appearance: base-select; }
-  #folder { display: flex; align-items: center; }
-  #folder::picker-icon { display: none; }
-  /* Always open downwards, using the room down to the popup's bottom edge. */
-  #folder::picker(select) {
-    position-area: block-end span-inline-end; position-try-fallbacks: none;
-    max-height: calc(100% - 12px); overflow-y: auto; scrollbar-width: none;
-    margin: 0; translate: 0 6px; padding: 4px;
-    border: 1px solid var(--line); border-radius: var(--r-sm);
-    background: var(--bg); color: var(--fg);
-    box-shadow: 0 8px 24px rgba(0,0,0,.18);
-  }
-  #folder::picker(select)::-webkit-scrollbar { display: none; }
-  #folder option {
-    padding: 6px 10px; border-radius: 6px; cursor: pointer;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  #folder option::checkmark { display: none; }
-  #folder option:hover, #folder option:focus-visible { background: var(--line); outline: none; }
-  #folder option:checked { font-weight: 600; }
+/* ---------- folder: type to find a folder, or create one ---------- */
+/* The label sits over the folder field, not over the tag icon left of it. */
+.folder-label { padding-left: 44px; }
+.folder-pick { position: relative; flex: 1; min-width: 0; }
+.folder-pick input#folder { padding-right: 30px; cursor: pointer; text-overflow: ellipsis; }
+.folder-pick input#folder:focus { cursor: text; }
+.folder-pick::after {
+  content: ""; position: absolute; right: 14px; top: 50%; width: 6px; height: 6px; margin-top: -5px;
+  border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg); pointer-events: none;
 }
+.folder-menu {
+  position: absolute; z-index: 5; left: 44px; right: 0; top: calc(100% + 6px);
+  padding: 4px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--bg); box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+.folder-list { max-height: 240px; overflow-y: auto; scrollbar-width: none; }
+.folder-list::-webkit-scrollbar { display: none; }
+.folder-list div {
+  padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.folder-list div[aria-selected="true"], .folder-list div:hover { background: var(--line); }
+.folder-list .current { font-weight: 600; }
+.folder-list .new { color: var(--muted); }
+.folder-list .none { color: var(--muted); cursor: default; }
+.folder-list .none:hover { background: none; }
+
+/* ---------- tags: an icon left of the folder picker, opening a menu ---------- */
+#folder-row .tag-btn { position: relative; flex: none; }
+#folder-row .tag-btn[aria-expanded="true"] { border-color: var(--fg); }
+.tag-count {
+  position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px;
+  display: grid; place-items: center; border-radius: 999px;
+  background: var(--fg); color: var(--bg); font-size: 10.5px; font-weight: 700; line-height: 1;
+}
+.field:has(#tag-menu) { position: relative; }
+.field:has(#folder-menu) { position: relative; }
+.tag-menu {
+  position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 6px);
+  padding: 4px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--bg); box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+.tagbox {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 34px; padding: 4px 6px;
+  border-radius: 6px; cursor: text;
+}
+.tag-chips { display: contents; }
+.tag {
+  flex: none; display: inline-flex; align-items: center; gap: 2px; height: 24px; padding: 0 3px 0 8px;
+  border-radius: 999px; background: var(--hover); font-size: 12.5px; white-space: nowrap;
+}
+.tag button {
+  display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%;
+  background: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1;
+}
+.tag button:hover { background: var(--line); color: var(--fg); }
+.tagbox input#tag-input { flex: 1 0 90px; min-width: 90px; height: 24px; padding: 0 4px; border: 0; background: none; }
+.tag-suggest {
+  max-height: 176px; overflow-y: auto; scrollbar-width: none;
+  margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line);
+}
+.tag-suggest:empty { display: none; }
+.tag-suggest::-webkit-scrollbar { display: none; }
+.tag-suggest div {
+  padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tag-suggest div[aria-selected="true"], .tag-suggest div:hover { background: var(--line); }
+.tag-suggest .new { color: var(--muted); }

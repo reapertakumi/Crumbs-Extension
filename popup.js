@@ -28,6 +28,10 @@ const st = {
   iconBlob: null,
   iconIsCurrent: false,
   saving: false,
+  tags: [],             // tags on the bookmark being saved
+  sugIdx: -1,           // highlighted tag suggestion
+  folderId: null,       // chosen folder (null = Uncategorized)
+  folderIdx: 0,         // highlighted row in the folder list
 };
 
 // ---------- start ----------
@@ -107,7 +111,11 @@ async function loadLibrary() {
     st.folders = out.folders || [];
     st.bookmarks = out.bookmarks || [];
   } catch (e) {
-    if (e instanceof ApiError && e.status === 401) {
+    if (e instanceof ApiError && e.status === 423) {
+      banner('Crumbs is locked. <button type="button" class="link" id="unlock">Open Crumbs</button> and enter the database key, then open this again.', true);
+      $('unlock').onclick = openCrumbs;
+      $('save').disabled = true;
+    } else if (e instanceof ApiError && e.status === 401) {
       banner('You are signed out of Crumbs. <button type="button" class="link" id="relogin">Sign in again</button>', true);
       $('relogin').onclick = () => chrome.runtime.openOptionsPage();
       $('save').disabled = true;
@@ -175,44 +183,275 @@ function updateDescFill() {
 
 // ---------- folders ----------
 
+// The folder field shows the chosen folder. Clicking it opens a list you can
+// type into to find a folder; a name that isn't there can be created.
+
 function fillFolders(selectId) {
-  const sel = $('folder');
-  sel.textContent = '';
-  sel.append(new Option('Uncategorized', ''));
-  for (const f of folderTree(st.folders)) {
-    const o = new Option(' '.repeat(f.depth) + f.name, String(f.id));
-    sel.append(o);
-  }
   let want = selectId;
   if (want === undefined) {
     if (st.existing) want = st.existing.folderId;
     else if (st.s.rememberFolder) want = st.s.lastFolder;
   }
   const ok = want != null && st.folders.some((f) => f.id === want);
-  sel.value = ok ? String(want) : '';
+  setFolder(ok ? want : null);
+}
+
+function folderName(id) {
+  return id == null ? 'Uncategorized' : folderPath(st.folders, id);
+}
+
+function setFolder(id) {
+  st.folderId = id;
+  $('folder').value = folderName(id);
+  $('folder').title = folderName(id);
 }
 
 function folderValue() {
-  const v = $('folder').value;
-  return v ? Number(v) : null;
+  return st.folderId ?? null;
 }
 
-async function createFolder() {
-  const name = $('new-folder-name').value.trim();
-  if (!name) return $('new-folder-name').focus();
-  $('new-folder-ok').disabled = true;
+function folderMenuOpen() { return !$('folder-menu').hidden; }
+
+function openFolderMenu(keepText = false) {
+  if (folderMenuOpen()) return;
+  closeTagMenu();
+  $('folder-menu').hidden = false;
+  $('folder').setAttribute('aria-expanded', 'true');
+  if (!keepText) $('folder').value = '';
+  $('folder').placeholder = folderName(st.folderId);
+  showFolders();
+}
+
+function closeFolderMenu(focus = false) {
+  if (!folderMenuOpen()) return;
+  $('folder-menu').hidden = true;
+  $('folder').setAttribute('aria-expanded', 'false');
+  $('folder').placeholder = 'Find or create a folder';
+  setFolder(st.folderId); // put the chosen name back
+  if (focus) $('folder').focus();
+}
+
+function showFolders() {
+  const q = $('folder').value.trim();
+  const ql = q.toLowerCase();
+  const items = [];
+  if (!q) {
+    // The whole tree, indented, like before.
+    items.push({ id: null, label: 'Uncategorized' });
+    for (const f of folderTree(st.folders)) items.push({ id: f.id, label: ' '.repeat(f.depth) + f.name });
+  } else {
+    // Matches by name, shown with their full path, names starting with the text first.
+    const hits = st.folders
+      .filter((f) => f.name.toLowerCase().includes(ql) || folderPath(st.folders, f.id).toLowerCase().includes(ql))
+      .map((f) => ({ id: f.id, label: folderPath(st.folders, f.id), starts: f.name.toLowerCase().startsWith(ql) }))
+      .sort((a, b) => (b.starts - a.starts) || a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+    if ('uncategorized'.includes(ql)) items.push({ id: null, label: 'Uncategorized' });
+    items.push(...hits);
+    const exact = st.folders.some((f) => f.name.toLowerCase() === ql);
+    if (!exact) items.push({ create: q.slice(0, 100), label: `Create “${q.slice(0, 100)}”` });
+  }
+  const box = $('folder-list');
+  box.textContent = '';
+  items.forEach((it) => {
+    const d = document.createElement('div');
+    d.setAttribute('role', 'option');
+    d.textContent = it.label;
+    if (it.create) d.className = 'new';
+    else if (it.id === st.folderId) d.className = 'current';
+    d.onmousedown = (e) => { e.preventDefault(); pickFolder(it); };
+    d._item = it;
+    box.append(d);
+  });
+  // Typing highlights the best match; with no text, the current folder.
+  st.folderIdx = q ? 0 : Math.max(0, items.findIndex((it) => !it.create && it.id === st.folderId));
+  markFolders();
+}
+
+function markFolders() {
+  [...$('folder-list').children].forEach((d, i) => {
+    d.setAttribute('aria-selected', String(i === st.folderIdx));
+    if (i === st.folderIdx) d.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+async function pickFolder(it) {
+  if (it.create) {
+    await createFolder(it.create);
+  } else {
+    st.folderId = it.id;
+  }
+  closeFolderMenu();
+}
+
+function folderKey(e) {
+  const opts = $('folder-list').children;
+  if (!folderMenuOpen()) {
+    if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); openFolderMenu(); }
+    return;
+  }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const n = opts.length;
+    if (!n) return;
+    st.folderIdx = e.key === 'ArrowDown' ? (st.folderIdx + 1) % n : (st.folderIdx - 1 + n) % n;
+    markFolders();
+  } else if (e.key === 'Enter') {
+    if (e.ctrlKey || e.metaKey) { closeFolderMenu(); return save(e); }
+    e.preventDefault();
+    const d = opts[st.folderIdx];
+    if (d) pickFolder(d._item);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    closeFolderMenu(true);
+  } else if (e.key === 'Tab') {
+    closeFolderMenu();
+  }
+}
+
+async function createFolder(name) {
+  name = name.trim();
+  if (!name) return;
   try {
     const f = await api('POST', '/api/folders', { name, parentId: null });
     st.folders.push(f);
-    fillFolders(f.id);
-    $('new-folder-row').hidden = true;
-    $('folder-row').hidden = false;
-    $('new-folder-name').value = '';
+    st.folderId = f.id;
     clearError();
   } catch (e) {
     showError(e.message);
-  } finally {
-    $('new-folder-ok').disabled = false;
+  }
+}
+
+// ---------- tags ----------
+
+// Same rules as Crumbs: lowercase, no commas or leading #, up to 40 characters.
+function cleanTag(t) {
+  return String(t).trim().replace(/^#+/, '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40);
+}
+
+// Every tag used in the library, most used first.
+function knownTags() {
+  const n = new Map();
+  for (const b of st.bookmarks) for (const t of b.tags || []) n.set(t, (n.get(t) || 0) + 1);
+  return [...n.keys()].sort((a, b) => n.get(b) - n.get(a) || a.localeCompare(b));
+}
+
+function renderTags() {
+  const box = $('tag-chips');
+  box.textContent = '';
+  for (const t of st.tags) {
+    const chip = document.createElement('span');
+    chip.className = 'tag';
+    chip.append(t);
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '×';
+    x.title = 'Remove ' + t;
+    x.setAttribute('aria-label', 'Remove tag ' + t);
+    x.onclick = () => { removeTag(t); $('tag-input').focus(); showSuggest(); };
+    chip.append(x);
+    box.append(chip);
+  }
+  $('tag-input').placeholder = st.tags.length ? '' : 'Add a tag';
+  const n = $('tag-count');
+  n.hidden = !st.tags.length;
+  n.textContent = st.tags.length;
+  $('tag-btn').title = st.tags.length ? 'Tags: ' + st.tags.join(', ') : 'Tags';
+}
+
+function tagMenuOpen() { return !$('tag-menu').hidden; }
+
+function openTagMenu() {
+  closeFolderMenu();
+  $('tag-menu').hidden = false;
+  $('tag-btn').setAttribute('aria-expanded', 'true');
+  $('tag-input').focus();
+  showSuggest();
+}
+
+function closeTagMenu(focusBtn = false) {
+  if (!tagMenuOpen()) return;
+  addTag($('tag-input').value);
+  $('tag-menu').hidden = true;
+  $('tag-btn').setAttribute('aria-expanded', 'false');
+  if (focusBtn) $('tag-btn').focus();
+}
+
+function addTag(raw) {
+  const t = cleanTag(raw);
+  $('tag-input').value = '';
+  hideSuggest();
+  if (!t || st.tags.includes(t) || st.tags.length >= 20) return;
+  st.tags.push(t);
+  renderTags();
+}
+
+function removeTag(t) {
+  st.tags = st.tags.filter((x) => x !== t);
+  renderTags();
+}
+
+function showSuggest() {
+  const q = cleanTag($('tag-input').value);
+  const list = (st.s.suggestTags ? knownTags() : []).filter((t) => !st.tags.includes(t) && (!q || t.includes(q)))
+    .sort((a, b) => (q && b.startsWith(q)) - (q && a.startsWith(q)))
+    .slice(0, 8);
+  const box = $('tag-suggest');
+  box.textContent = '';
+  const items = list.map((t) => ({ t, label: t }));
+  if (q && !list.includes(q) && !st.tags.includes(q)) items.push({ t: q, label: `Add “${q}”`, isNew: true });
+  st.sugIdx = q ? 0 : -1;
+  if (!items.length) return hideSuggest();
+  items.forEach((it, i) => {
+    const d = document.createElement('div');
+    d.setAttribute('role', 'option');
+    d.textContent = it.label;
+    d.dataset.tag = it.t;
+    if (it.isNew) d.className = 'new';
+    // mousedown, so the input keeps focus.
+    d.onmousedown = (e) => { e.preventDefault(); addTag(it.t); };
+    box.append(d);
+  });
+  box.hidden = false;
+  $('tag-input').setAttribute('aria-expanded', 'true');
+  markSuggest();
+}
+
+function hideSuggest() {
+  $('tag-suggest').textContent = '';
+  $('tag-input').setAttribute('aria-expanded', 'false');
+  st.sugIdx = -1;
+}
+
+function markSuggest() {
+  [...$('tag-suggest').children].forEach((d, i) => {
+    d.setAttribute('aria-selected', String(i === st.sugIdx));
+    if (i === st.sugIdx) d.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+function tagKey(e) {
+  const input = $('tag-input');
+  const opts = $('tag-suggest').children;
+  const open = $('tag-suggest').children.length > 0;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!open) return;
+    const n = opts.length;
+    st.sugIdx = e.key === 'ArrowDown' ? (st.sugIdx + 1) % n : (st.sugIdx - 1 + n) % n;
+    markSuggest();
+  } else if (e.key === 'Enter' || e.key === ',' || (e.key === 'Tab' && input.value.trim())) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) return save(e);
+    e.preventDefault();
+    const pick = open && st.sugIdx >= 0 ? opts[st.sugIdx].dataset.tag : input.value;
+    addTag(pick);
+    showSuggest();
+  } else if (e.key === 'Backspace' && !input.value && st.tags.length) {
+    removeTag(st.tags[st.tags.length - 1]);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    closeTagMenu(true);
   }
 }
 
@@ -227,6 +466,8 @@ function findExisting() {
   const b = st.existing;
   $('name').value = b.name;
   $('desc').value = b.description || '';
+  st.tags = Array.isArray(b.tags) ? [...b.tags] : [];
+  renderTags();
   if (b.thumb) {
     st.thumbIsCurrent = true;
     st.thumbs.unshift({ label: 'Saved', current: true, load: () => api('GET', b.thumb, undefined, { raw: true }).then((r) => r.blob()) });
@@ -465,6 +706,10 @@ async function save(e) {
     description: $('desc').value.trim(),
     folderId: folderValue(),
   };
+  // A tag still being typed counts too.
+  closeTagMenu();
+  addTag($('tag-input').value);
+  body.tags = st.tags;
   st.saving = true;
   const btn = $('save');
   const label = btn.textContent;
@@ -472,8 +717,6 @@ async function save(e) {
   btn.textContent = st.update ? 'Updating…' : 'Saving…';
   try {
     const updating = st.update && st.existing;
-    // Crumbs replaces every field on update, so keep the tags it already has.
-    if (updating && Array.isArray(st.existing.tags)) body.tags = st.existing.tags;
     const b = updating
       ? await api('PUT', '/api/bookmarks/' + st.existing.id, body)
       : await api('POST', '/api/bookmarks', body);
@@ -492,6 +735,14 @@ async function save(e) {
     if (st.target.tabId != null && st.target.kind !== 'link') {
       chrome.action.setBadgeText({ tabId: st.target.tabId, text: '✓' }).catch(() => {});
       chrome.action.setBadgeBackgroundColor({ tabId: st.target.tabId, color: '#000' }).catch(() => {});
+    }
+    // Remember it as saved, so the ✓ shows when you come back to this page.
+    {
+      const key = urlKey(b.url || body.url);
+      const { saved } = await chrome.storage.session.get('saved').catch(() => ({}));
+      if (saved && key && !saved.keys.includes(key)) {
+        await chrome.storage.session.set({ saved: { at: saved.at, keys: [...saved.keys, key] } }).catch(() => {});
+      }
     }
     showDone(b, updating, problems);
   } catch (err) {
@@ -532,6 +783,29 @@ function showDone(b, updated, problems) {
 
 function wireForm() {
   $('form').addEventListener('submit', save);
+  $('tagbox').addEventListener('mousedown', (e) => { if (e.target === e.currentTarget || e.target.id === 'tag-chips') { e.preventDefault(); $('tag-input').focus(); } });
+  $('tag-input').addEventListener('keydown', tagKey);
+  $('tag-input').addEventListener('input', () => {
+    // A comma (typed or pasted) finishes a tag.
+    const v = $('tag-input').value;
+    if (v.includes(',')) {
+      const parts = v.split(',');
+      const rest = parts.pop();
+      parts.forEach(addTag);
+      $('tag-input').value = rest;
+    }
+    showSuggest();
+  });
+  $('tag-btn').onclick = () => (tagMenuOpen() ? closeTagMenu(true) : openTagMenu());
+  // Clicking anywhere else closes the menu, keeping a tag that was being typed.
+  document.addEventListener('mousedown', (e) => {
+    if (tagMenuOpen() && !e.target.closest('#tag-menu, #tag-btn')) closeTagMenu();
+    if (folderMenuOpen() && !e.target.closest('#folder-menu, #folder')) closeFolderMenu();
+  });
+  document.addEventListener('focusin', (e) => {
+    if (tagMenuOpen() && !e.target.closest('#tag-menu, #tag-btn')) closeTagMenu();
+    if (folderMenuOpen() && !e.target.closest('#folder-menu, #folder')) closeFolderMenu();
+  });
   // The error floats over the form: click it, or keep typing, to dismiss it.
   $('error').addEventListener('click', clearError);
   $('form').addEventListener('input', clearError);
@@ -541,26 +815,10 @@ function wireForm() {
   $('desc').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) save(e); });
   $('desc-fill').onclick = () => { $('desc').value = pageDescription().slice(0, 2000); st.dirty.desc = true; updateDescFill(); };
 
-  // The new-folder field takes the folder picker's place on the same line,
-  // so the popup doesn't grow.
-  const closeNewFolder = () => {
-    $('new-folder-row').hidden = true;
-    $('folder-row').hidden = false;
-    $('new-folder-name').value = '';
-    $('new-folder').focus();
-  };
-  $('new-folder').onclick = () => {
-    $('folder-row').hidden = true;
-    $('new-folder-row').hidden = false;
-    $('new-folder-name').focus();
-  };
-  $('new-folder-ok').onclick = createFolder;
-  $('new-folder-cancel').onclick = closeNewFolder;
-  $('new-folder-name').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); createFolder(); }
-    // Escape cancels the new folder instead of closing the popup.
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeNewFolder(); }
-  });
+  $('folder').addEventListener('mousedown', () => { if (!folderMenuOpen()) setTimeout(openFolderMenu); });
+  $('folder').addEventListener('focus', () => { if (!folderMenuOpen()) openFolderMenu(); });
+  $('folder').addEventListener('input', () => { if (!folderMenuOpen()) openFolderMenu(true); showFolders(); });
+  $('folder').addEventListener('keydown', folderKey);
 
   $('t-prev').onclick = () => stepThumb(-1);
   $('t-next').onclick = () => stepThumb(1);
@@ -614,7 +872,7 @@ async function refreshUser() {
   if (st.s.auth === 'guest') return;
   try {
     const state = await api('GET', '/api/state', undefined, { timeout: 8000 });
-    if (!state.user) return;
+    if (state.locked || !state.user) return;
     const u = publicUser(state.user);
     const old = st.s.user || {};
     if (u.avatar !== old.avatar || u.displayName !== old.displayName || u.username !== old.username) {

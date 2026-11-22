@@ -1,10 +1,10 @@
 import {
-  getSettings, setSettings, normalizeServer, originPattern, hasServerPermission,
+  getSettings, setSettings, normalizeServer, originPatterns, hasServerPermission, LOCKED_MSG,
   request, api, probe, signIn, publicUser, ApiError, hostOf, fillAvatar,
 } from './lib.js';
 
 const $ = (id) => document.getElementById(id);
-const TOGGLES = ['autoDescription', 'autoThumbnail', 'rememberFolder', 'closeAfterSave'];
+const TOGGLES = ['autoDescription', 'autoThumbnail', 'rememberFolder', 'suggestTags', 'closeAfterSave'];
 
 let s = null;
 let pendingServer = ''; // server being connected, before it is saved
@@ -91,13 +91,14 @@ async function connect(e) {
 
   // Must come first: Chrome only shows the permission prompt during a click.
   let granted = false;
-  try { granted = await chrome.permissions.request({ origins: [originPattern(server)] }); }
+  try { granted = await chrome.permissions.request({ origins: originPatterns(server) }); }
   catch (err) { return showError('Chrome could not ask for permission: ' + err.message); }
   if (!granted) return showError('The extension needs your permission to talk to ' + hostOf(server) + '.');
 
   busy($('connect'), true, 'Connecting…');
   try {
     const state = await probe(server);
+    if (state && state.locked) throw new Error(LOCKED_MSG);
     if (!state || typeof state.setup !== 'boolean') throw new Error('That address answered, but it does not look like Crumbs.');
     if (state.setup) {
       throw new Error('This Crumbs has no accounts yet. Open it in a tab, create the first account, then connect again.');
@@ -166,6 +167,10 @@ async function checkConnection() {
   }
   try {
     const state = await api('GET', '/api/state', undefined, { timeout: 8000 });
+    if (state.locked) {
+      pill('Locked', true);
+      return showError(LOCKED_MSG);
+    }
     if (!state.user) {
       pill('Signed out', true);
       pendingServer = s.server;
@@ -178,7 +183,7 @@ async function checkConnection() {
     }
     pill('Connected');
   } catch (err) {
-    pill(err instanceof ApiError && err.status === 0 ? 'Offline' : 'Problem', true);
+    pill(err instanceof ApiError && err.status === 423 ? 'Locked' : err instanceof ApiError && err.status === 0 ? 'Offline' : 'Problem', true);
     showError(err.message);
   }
 }
@@ -191,7 +196,7 @@ async function disconnect() {
   // A cookie sign-in is shared with the Crumbs tab, so it is left alone.
   const old = s.server;
   await setSettings({ server: '', auth: '', token: '', user: null, lastFolder: null });
-  try { await chrome.permissions.remove({ origins: [originPattern(old)] }); } catch { /* fine */ }
+  try { await chrome.permissions.remove({ origins: originPatterns(old) }); } catch { /* fine */ }
   s = await getSettings();
   pendingServer = old;
   render();
