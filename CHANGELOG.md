@@ -7,7 +7,6 @@ All notable changes to Crumbs for Chrome. The format follows
 Each version is published as a release with an installable zip:
 https://github.com/reapertakumi/Crumbs-Extension/releases
 
-- The popup no longer shows a scrollbar. It was taller than the 600 px Chrome
 ## [1.0.2] - 2026-11-22
 
 ### Added
