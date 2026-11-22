@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Crumbs",
   "short_name": "Crumbs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Save the page you're on to your own Crumbs bookmark manager, with its thumbnail, favicon, title and description.",
   "minimum_chrome_version": "116",
   "icons": {

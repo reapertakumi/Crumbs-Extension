@@ -471,6 +471,8 @@ async function save(e) {
   btn.textContent = st.update ? 'Updating…' : 'Saving…';
   try {
     const updating = st.update && st.existing;
+    // Crumbs replaces every field on update, so keep the tags it already has.
+    if (updating && Array.isArray(st.existing.tags)) body.tags = st.existing.tags;
     const b = updating
       ? await api('PUT', '/api/bookmarks/' + st.existing.id, body)
       : await api('POST', '/api/bookmarks', body);
