@@ -1,0 +1,42 @@
+# Push a tag like v1.0.0 and this builds crumbs-extension-v1.0.0.zip and
+# publishes it as a GitHub release. The tag must match "version" in manifest.json.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          have="$(jq -r .version manifest.json)"
+          if [ "$want" != "$have" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match manifest.json version $have"
+            exit 1
+          fi
+
+      - name: Build the zip
+        run: |
+          mkdir -p dist
+          zip -r "dist/crumbs-extension-$GITHUB_REF_NAME.zip" \
+            manifest.json background.js lib.js \
+            popup.html popup.css popup.js \
+            options.html options.css options.js \
+            ui.css icons README.md
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "dist/crumbs-extension-$GITHUB_REF_NAME.zip" \
+            --title "Crumbs for Chrome $GITHUB_REF_NAME" \
+            --notes "Unzip, open chrome://extensions, switch on Developer mode, click **Load unpacked** and pick the unzipped folder. Needs a Crumbs server with extension support (see the README)."
