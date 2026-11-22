@@ -1,6 +1,6 @@
 import {
   getSettings, setSettings, normalizeServer, originPattern, hasServerPermission,
-  request, api, probe, signIn, publicUser, ApiError, hostOf,
+  request, api, probe, signIn, publicUser, ApiError, hostOf, fillAvatar,
 } from './lib.js';
 
 const $ = (id) => document.getElementById(id);
@@ -27,6 +27,18 @@ async function init() {
   $('choice-other').onclick = () => showLogin(pendingServer);
   $('switch').onclick = () => { pendingServer = s.server; showLogin(s.server); };
   $('disconnect').onclick = disconnect;
+  $('refresh').onclick = async () => {
+    const btn = $('refresh');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add('spinning');
+    clearMsg();
+    pill('Checking…');
+    try { await checkConnection(); } finally {
+      btn.disabled = false;
+      btn.classList.remove('spinning');
+    }
+  };
   $('open').onclick = () => chrome.tabs.create({ url: s.server + '/' });
   $('shortcuts').onclick = () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
   render();
@@ -52,24 +64,7 @@ function render() {
   const how = { token: 'its own sign-in', cookie: 'your Crumbs sign-in in Chrome', guest: 'no sign-in' }[s.auth] || '';
   $('acct-detail').textContent = s.server + (how ? ' · using ' + how : '');
   $('switch').textContent = s.auth === 'guest' ? 'Sign in' : 'Sign in as someone else';
-  setAvatar(u, name);
-}
-
-function setAvatar(u, name) {
-  const el = $('avatar');
-  el.textContent = [...(name || '?')][0];
-  if (u.avatar && u.avatar.startsWith('/')) {
-    api('GET', u.avatar, undefined, { raw: true })
-      .then((r) => r.blob())
-      .then((b) => {
-        const img = new Image();
-        img.alt = '';
-        img.src = URL.createObjectURL(b);
-        el.textContent = '';
-        el.append(img);
-      })
-      .catch(() => {});
-  }
+  fillAvatar($('avatar'), s.auth === 'guest' ? null : s.user, name);
 }
 
 function pill(text, bad = false) {

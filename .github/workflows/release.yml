@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p dist
           zip -r "dist/crumbs-extension-$GITHUB_REF_NAME.zip" \
-            manifest.json background.js lib.js \
+            manifest.json background.js lib.js avatars.js \
             popup.html popup.css popup.js \
             options.html options.css options.js \
             ui.css icons README.md

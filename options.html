@@ -30,6 +30,8 @@
         <rect x="47.5" y="55" width="3.2" height="3.2" rx=".8" transform="rotate(35 49.1 56.6)"/>
       </g>
     </symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1L20.5 8.5"/><path d="M20.5 3.5v5h-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
   </svg>
 
   <main>
@@ -52,13 +54,17 @@
             <div class="strong" id="acct-name"></div>
             <div class="muted small" id="acct-detail"></div>
           </div>
-          <span class="pill" id="status-pill">Connected</span>
+          <span class="pill" id="status-pill">Checking…</span>
+          <button class="icon-btn" id="refresh" title="Check the connection again" aria-label="Check the connection again">
+            <svg width="18" height="18"><use href="#i-refresh"/></svg>
+          </button>
+          <button class="icon-btn" id="disconnect" title="Disconnect from this Crumbs" aria-label="Disconnect">
+            <svg width="18" height="18"><use href="#i-x"/></svg>
+          </button>
         </div>
-        <div class="row wrap">
+        <div class="row wrap account-actions">
           <button class="btn" id="open">Open Crumbs</button>
           <button class="btn" id="switch">Sign in as someone else</button>
-          <span class="grow"></span>
-          <button class="btn danger" id="disconnect">Disconnect</button>
         </div>
       </div>
 

@@ -1,6 +1,8 @@
 // Shared code for the Crumbs extension: settings, talking to the Crumbs
 // server, reading pages and making thumbnails.
 
+import { AVATAR_ICONS } from './avatars.js';
+
 // ---------- settings ----------
 
 export const DEFAULTS = {
@@ -400,6 +402,38 @@ export async function makeIcon(blob) {
     ctx.drawImage(im.src, (N - dw) / 2, (N - dh) / 2, dw, dh);
     return await canvasBlob(c, 'image/png');
   } finally { im.done(); }
+}
+
+// ---------- avatars ----------
+
+// fillAvatar shows a user's Crumbs profile picture in `el`, like the web app:
+// an uploaded photo ("/avatar/..."), a built-in icon ("icon:name"), or the
+// first letter of their name.
+export async function fillAvatar(el, user, fallbackName = '') {
+  const name = (user && (user.displayName || user.username)) || fallbackName || '?';
+  const letter = () => el.replaceChildren(document.createTextNode([...name][0].toUpperCase()));
+  const av = (user && user.avatar) || '';
+  if (av.startsWith('icon:') && AVATAR_ICONS[av.slice(5)]) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = AVATAR_ICONS[av.slice(5)];
+    el.replaceChildren(svg);
+    return;
+  }
+  if (av.startsWith('/')) {
+    letter(); // until the photo arrives, or if it can't load
+    try {
+      const blob = await (await api('GET', av, undefined, { raw: true, timeout: 8000 })).blob();
+      const img = new Image();
+      img.alt = '';
+      img.src = URL.createObjectURL(blob);
+      await img.decode();
+      el.replaceChildren(img);
+    } catch { /* keep the letter */ }
+    return;
+  }
+  letter();
 }
 
 // Chrome's own cached favicon for a page (needs the "favicon" permission).

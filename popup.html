@@ -47,7 +47,11 @@
       <svg class="logo" width="26" height="26"><use href="#i-logo"/></svg>
       <span>Crumbs</span>
     </a>
-    <span class="who muted small" id="who"></span>
+    <span class="grow"></span>
+    <span class="me" id="me" hidden>
+      <span class="who small" id="who"></span>
+      <span class="avatar" id="avatar"></span>
+    </span>
     <button class="icon-btn" id="settings" title="Settings" aria-label="Settings">
       <svg width="18" height="18"><use href="#i-gear"/></svg>
     </button>
@@ -111,7 +115,8 @@
       </div>
       <div class="row" id="new-folder-row" hidden>
         <input id="new-folder-name" maxlength="100" placeholder="New folder name">
-        <button type="button" class="btn small-btn" id="new-folder-ok">Create</button>
+        <button type="button" class="btn small-btn primary" id="new-folder-ok">Create</button>
+        <button type="button" class="btn small-btn" id="new-folder-cancel">Cancel</button>
       </div>
     </div>
 
@@ -142,6 +147,8 @@
       <button class="btn primary" id="done-close">Done</button>
     </div>
   </section>
+
+  <p class="server-line muted small" id="server-line" hidden></p>
 
   <script type="module" src="popup.js"></script>
 </body>

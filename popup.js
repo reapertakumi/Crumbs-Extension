@@ -1,7 +1,7 @@
 import {
-  getSettings, setSettings, api, ApiError, hasServerPermission,
+  getSettings, setSettings, api, ApiError, hasServerPermission, publicUser,
   folderTree, folderPath, isSavable, urlKey, cleanURL, youtubeID, hostOf,
-  extractPage, fetchImage, makeThumb, makeIcon, chromeFavicon,
+  extractPage, fetchImage, makeThumb, makeIcon, chromeFavicon, fillAvatar,
 } from './lib.js';
 
 const $ = (id) => document.getElementById(id);
@@ -48,6 +48,7 @@ async function init() {
     return showConnect('Chrome no longer lets the extension talk to <b>' + esc(st.s.server) + '</b>. Open the settings and connect again.');
   }
   showWho();
+  refreshUser();
 
   st.target = await getTarget();
   const t = st.target;
@@ -58,7 +59,6 @@ async function init() {
   wireForm();
 
   if (!isSavable(t.url)) {
-    banner('Crumbs can only save web pages (addresses that start with http or https). You can type one in the URL box to save it by hand.', true);
     st.thumbs = [];
     showEmptyThumb('No preview for this page');
   }
@@ -537,15 +537,22 @@ function wireForm() {
   $('desc').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) save(e); });
   $('desc-fill').onclick = () => { $('desc').value = pageDescription().slice(0, 2000); st.dirty.desc = true; updateDescFill(); };
 
+  const closeNewFolder = () => {
+    $('new-folder-row').hidden = true;
+    $('new-folder-name').value = '';
+    $('new-folder').focus();
+  };
   $('new-folder').onclick = () => {
-    const row = $('new-folder-row');
-    row.hidden = !row.hidden;
-    if (!row.hidden) $('new-folder-name').focus();
+    if (!$('new-folder-row').hidden) return closeNewFolder();
+    $('new-folder-row').hidden = false;
+    $('new-folder-name').focus();
   };
   $('new-folder-ok').onclick = createFolder;
+  $('new-folder-cancel').onclick = closeNewFolder;
   $('new-folder-name').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); createFolder(); }
-    if (e.key === 'Escape') { e.stopPropagation(); $('new-folder-row').hidden = true; }
+    // Escape cancels the new folder instead of closing the popup.
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeNewFolder(); }
   });
 
   $('t-prev').onclick = () => stepThumb(-1);
@@ -583,8 +590,32 @@ function showConnect(html) {
 function showWho() {
   const s = st.s;
   const name = s.auth === 'guest' ? 'Guest' : (s.user && (s.user.displayName || s.user.username)) || '';
-  $('who').textContent = name ? name + ' · ' + hostOf(s.server) : hostOf(s.server);
-  $('who').title = s.server;
+  $('who').textContent = name;
+  $('me').title = name ? 'Signed in to Crumbs as ' + name : '';
+  $('me').hidden = false;
+  fillAvatar($('avatar'), s.auth === 'guest' ? null : s.user, name || 'Guest');
+  // The server's address, at the bottom.
+  let addr = s.server;
+  try { const u = new URL(s.server); addr = u.host + u.pathname.replace(/\/$/, ''); } catch { /* as typed */ }
+  $('server-line').textContent = addr;
+  $('server-line').title = s.server;
+  $('server-line').hidden = false;
+}
+
+// refreshUser picks up a new name or profile picture changed in Crumbs.
+async function refreshUser() {
+  if (st.s.auth === 'guest') return;
+  try {
+    const state = await api('GET', '/api/state', undefined, { timeout: 8000 });
+    if (!state.user) return;
+    const u = publicUser(state.user);
+    const old = st.s.user || {};
+    if (u.avatar !== old.avatar || u.displayName !== old.displayName || u.username !== old.username) {
+      st.s.user = u;
+      await setSettings({ user: u });
+      showWho();
+    }
+  } catch { /* offline: keep what we have */ }
 }
 
 function banner(html, warn = false) {

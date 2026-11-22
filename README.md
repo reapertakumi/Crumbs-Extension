@@ -109,6 +109,7 @@ popup.*         the save popup
 options.*       the settings page
 background.js   right-click menu, first-run setup, ✓ badge
 lib.js          talking to Crumbs, reading pages, making thumbnails
+avatars.js      Crumbs' profile picture icons, so your avatar looks the same
 ui.css          shared black & white styles
 icons/          toolbar icons
 .github/        the release workflow

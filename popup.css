@@ -6,9 +6,16 @@ body.window { width: auto; max-width: 480px; margin: 0 auto; }
   padding: 10px 10px 8px 14px;
 }
 .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 999px; }
-.who { flex: 1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.me .avatar { --s: 26px; }
+.who { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 
-form { display: flex; flex-direction: column; gap: 12px; padding: 2px 14px 14px; }
+.server-line {
+  margin: 0; padding: 0 14px 12px; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+form { display: flex; flex-direction: column; gap: 12px; padding: 2px 14px 10px; }
 
 /* ---------- banner ---------- */
 .banner {
