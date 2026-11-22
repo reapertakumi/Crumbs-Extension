@@ -31,7 +31,27 @@ jobs:
             manifest.json background.js lib.js avatars.js \
             popup.html popup.css popup.js \
             options.html options.css options.js \
-            ui.css icons README.md
+            ui.css icons README.md CHANGELOG.md
+
+      - name: Write the release notes
+        run: |
+          # This version's section of CHANGELOG.md, then how to install.
+          awk -v v="${GITHUB_REF_NAME#v}" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on && /^\[[^]]+\]: / { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::warning::CHANGELOG.md has no section for ${GITHUB_REF_NAME#v}"
+            : > notes.md
+          fi
+          cat >> notes.md <<'EOF'
+
+          ### Install
+          Unzip, open `chrome://extensions`, switch on **Developer mode**, click **Load unpacked**
+          and pick the unzipped folder. Needs a Crumbs server with extension support (see the README).
+          EOF
 
       - name: Publish the release
         env:
@@ -39,4 +59,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" "dist/crumbs-extension-$GITHUB_REF_NAME.zip" \
             --title "Crumbs for Chrome $GITHUB_REF_NAME" \
-            --notes "Unzip, open chrome://extensions, switch on Developer mode, click **Load unpacked** and pick the unzipped folder. Needs a Crumbs server with extension support (see the README)."
+            --notes-file notes.md

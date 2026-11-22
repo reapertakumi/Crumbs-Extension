@@ -92,14 +92,17 @@ saving may fail with "Your Crumbs server blocked the extension".
 
 ## Releasing a new version
 
-Bump `version` in `manifest.json`, commit, then tag and push:
+Add the changes under a new `## [x.y.z] - date` heading in
+[CHANGELOG.md](CHANGELOG.md), bump `version` in `manifest.json`, commit, then
+tag and push:
 
 ```sh
 git tag v1.0.1
 git push origin v1.0.1
 ```
 
-GitHub Actions builds the zip and publishes the release.
+GitHub Actions builds the zip and publishes the release, with that version's
+changelog section as the release notes.
 
 ## Files
 
